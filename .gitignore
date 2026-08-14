@@ -13,11 +13,14 @@ tmp/
 *.log
 .DS_Store
 
-# Vendored public skill repos (installed per docs/SKILL_ECOSYSTEM.md — re-clone, don't copy into the starter)
-/adhoc_jobs/tavily-skill/
-
-# Nested project repo (private; managed by its own git in adhoc_jobs/ai_job_copilot/.git)
-/adhoc_jobs/ai_job_copilot/
+# adhoc_jobs/ is a workbench, not content. Everything dropped in it is either a nested
+# project with its own git (ai_job_copilot — private, managed by adhoc_jobs/ai_job_copilot/.git)
+# or a vendored public skill repo (re-clone per docs/SKILL_ECOSYSTEM.md, don't copy it in here).
+# So ignore the CONTENTS wholesale rather than naming each one — a per-project line has to be
+# added by hand every time and is silently lost whenever an upstream sync rewrites this file.
+# The directory itself stays in the repo via the un-ignored .gitkeep below.
+/adhoc_jobs/*
+!/adhoc_jobs/.gitkeep
 .env.*
 !.env.example
 .pytest_cache/
