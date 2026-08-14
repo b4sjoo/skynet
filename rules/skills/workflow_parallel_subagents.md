@@ -5,7 +5,7 @@
 - **类型**: Workflow
 - **适用场景**: 并行执行多个独立子任务（调研、分析、代码）
 - **创建日期**: 2026-02-20
-- **最后更新**: 2026-05-27（按 Claude Code 现实重写；OpenCode 旧版见文末映射）
+- **最后更新**: 2026-08-14（补入 `Workflow` 确定性编排、worktree 隔离、fork、结构化输出；删除残留的 OpenCode subagent 路由表）
 
 ---
 
@@ -37,8 +37,8 @@ Subagent 的主要价值不是模拟人类团队，也不是把一个普通任�
 
 ## Claude Code 的两条硬约束（先记住）
 
-1. **只能 Claude**：subagent 的 `model` 只能取 `opus` / `sonnet` / `haiku` / Claude 全名 / `inherit`。**无法派 Gemini、GPT 等非 Claude 的 subagent**。需要跨 provider（如用 Gemini 做创意并行），走 OpenCode 后端或直接调对应 provider，而不是 `Agent` 工具。
-2. **子不能再生子**：subagent **不能再派 subagent**（防无限嵌套）。需要「嵌套并行」时，把那一层上移到主 agent——由主 agent 一次性平铺派出所有 subagent，而不是让某个 subagent 内部再分裂。深层链式委派改用 Skills 或主 agent 串接。
+1. **只能 Claude**：subagent 的 `model` 只能取 Claude 系（`opus` / `sonnet` / `haiku` / `fable`），省略则继承主对话。**无法派 Gemini、GPT 等非 Claude 的 subagent**。需要跨 provider（如用 Gemini 做创意并行），走 OpenCode 后端或直接调对应 provider，而不是 `Agent` 工具。
+2. **嵌套只有一层**：subagent **不能再派 subagent**。fork 出来的 agent 尤其要注意——它继承了完整上下文，很容易反射性地再委派一次，规则是**直接执行**。需要「嵌套并行」时把那一层上移到主 agent 平铺派发；用 `Workflow` 编排时，脚本内的 `workflow()` 也只允许嵌套一层，子 workflow 里再调就会抛错。
 
 ## 反模式
 
@@ -47,7 +47,9 @@ Subagent 的主要价值不是模拟人类团队，也不是把一个普通任�
 1. **单点小任务**：只需读 1-2 个文件、跑一个命令、改一个局部 bug。
 2. **强顺序依赖**：下一步必须依赖上一步输出，拆出去只会制造等待和交接成本。
 3. **共享状态写入**：多个 agent 同时改同一批文件、同一张表、同一份文案，冲突和隐含决策难以合并。
+   *已有部分解药*：`isolation: "worktree"` 给每个 agent 独立的 git worktree，物理上不可能互相踩。代价是每个 agent 约 200-500ms 建立开销加磁盘占用，**只在 agent 确实会并行改文件时才用**，不要当默认值。隐含决策难合并这一条依然成立——worktree 解决的是冲突，不是「谁的判断对」。
 4. **上下文必须完整共享**：每个 agent 都必须知道全量背景才能做对，拆分后只会丢条件。
+   *已有部分解药*：`subagent_type: "fork"` 派出的 agent 继承主对话的完整上下文（且强制跟随主模型，`model` 参数被忽略）。适合「背景很长但要独立跑一段」的场景。注意 fork 不省 token——它复制的是上下文，省的是**你的**上下文（工具输出留在 fork 里不回灌主线程）。
 5. **验证标准不清**：没有可核对的输出格式、证据要求或验收条件，多个 agent 只会产出多份模糊总结。
 
 ## 任务类型参考
@@ -79,12 +81,11 @@ Subagent 的主要价值不是模拟人类团队，也不是把一个普通任�
 
 ### 2. 并行启动
 
-**在同一条消息里发出所有 `Agent` 调用**——Claude Code 会并发执行它们。用 `subagent_type` 选角色、`model` 选模型、`run_in_background` 决定前台还是后台：
+**在同一条消息里发出所有 `Agent` 调用**——Claude Code 会并发执行它们。逐个调用就是串行，这是最常见的「以为并行了其实没有」。
 
-- **前台并发**（默认，多数场景）：同一条消息发多个 `Agent`，并发跑，结果在本轮作为 tool result 一起回来，主 agent 直接综合。
-- **后台并发**（`run_in_background: true`）：派出后不阻塞，可以接着干别的；每个 subagent 完成时结果**自动**作为 tool result 回到主对话——系统会通知，**无需轮询**。
+`Agent` 的参数只有 `prompt` / `description` / `subagent_type` / `model` / `isolation`。**没有 `run_in_background` 这个参数**（那是 `Bash` 的）。前台/后台不由你的调用决定：普通 subagent 的结果在本轮作为 tool result 回来；fork 和「后台运行的 skill」则先返回一个名字，结果稍后以 task notification 送达——那种情况下**派出后就结束本轮回复，等通知，不要轮询**。
 
-`model`：`opus`（最难的逻辑/架构）、`sonnet`（执行、调研、代码，默认性价比）、`haiku`（轻量/快速）、`inherit`（随主对话）。
+`model`：`opus`（最难的逻辑/架构）、`sonnet`（执行、调研、代码，默认性价比）、`haiku`（轻量/快速）、`fable`。**默认省略**，继承主对话模型通常就是对的；只在明确判断该换档时才写。
 
 常用 `subagent_type`：
 
@@ -92,8 +93,14 @@ Subagent 的主要价值不是模拟人类团队，也不是把一个普通任�
 |---|---|---|
 | `general-purpose` | 全工具（含 Edit/Write、联网） | 外部深度调研、需写中间产物、复杂多步任务 |
 | `Explore` | 只读 fan-out（Read/Glob/Grep/Bash/Web，无 Edit/Write/Agent） | 广撒网检索、代码库探索、定位为主不改动 |
-| `Plan` | 只读 | plan 模式下的研究 |
-| `claude-code-guide` | Bash/Read/Web | Claude Code 功能咨询 |
+| `fork` | 同主对话 | 需要完整上下文才做得对，且想把工具噪音挡在主线程外 |
+| `Plan` | 只读 | 设计实现方案、架构权衡 |
+| `claude-code-guide` | Bash/Read/Web | Claude Code / Agent SDK / Claude API 的用法咨询 |
+| `claude` | 全工具 | 不匹配上述任何一类时的兜底 |
+
+**类型以运行时的工具说明为准**——项目可以在 `.claude/agents/*.md` 里定义自己的 agent，名字、模型、工具集都由那份 frontmatter 决定。不要背这张表。
+
+**派出后可以续聊**：`ListAgents` 列出可寻址的 agent，`SendMessage` 按名字继续某个已派出的 agent，它的上下文还在。这比重新 `Agent` 一次（全新空白上下文）省得多，也避免重复交代背景。
 
 每个 subagent 的 prompt 要包含：
 
@@ -110,7 +117,8 @@ Subagent 的主要价值不是模拟人类团队，也不是把一个普通任�
 
 ## 结果回传与共享上下文
 
-- subagent 只返回**一段最终文本**作为 tool result；它的中间工具调用主 agent **看不到**（需要时可事后查 subagent transcript）。所以 prompt 里要明确要求它把关键证据写进最终输出。
+- subagent 只返回**一段最终文本**作为 tool result；它的中间工具调用主 agent **看不到**（需要时可事后查 subagent transcript）。所以 prompt 里要明确要求它把关键证据写进最终输出。**这个「看不到」是特性不是缺陷**——把 500 个 grep 结果挡在主线程外，正是 subagent 的主要价值之一。
+- **要结构化结果就别靠 prompt 求**。用 `Workflow` 时给 `agent()` 传 `schema`（JSON Schema），subagent 会被强制走结构化输出通道，返回的是**校验过的对象**，格式不符会自动重试。手写「请返回 JSON」再自己解析是上一代做法，脆且会静默失败。
 - Claude Code **没有内建的 agent 间共享 scratchpad**。需要多 agent 共享一份「活文档」（single source of truth）时用**文件**：主 agent 建 `tmp/<session>/scratchpad.md`，在 prompt 里告诉 subagent 去读/写这个文件。结构化 JSON 输出格式见 `bestpractice_multi_agent_analysis.md`。
 
 ---
@@ -141,9 +149,9 @@ Subagent 的主要价值不是模拟人类团队，也不是把一个普通任�
 
 ```
 审查「一个 PR 是否可靠」
-├─ Agent 1（explore/reasoning_gpt）：代码行为和边界条件
-├─ Agent 2（explore）：测试覆盖、缺失 fixture、回归风险
-├─ Agent 3（reasoning_gpt）：架构一致性和隐含依赖
+├─ Agent 1（Explore）：代码行为和边界条件
+├─ Agent 2（Explore）：测试覆盖、缺失 fixture、回归风险
+├─ Agent 3（general-purpose）：架构一致性和隐含依赖
 └─ Overlap：所有 agent 都看核心 diff，但外围文件按职责分开
 ```
 
@@ -156,33 +164,74 @@ Subagent 的主要价值不是模拟人类团队，也不是把一个普通任�
 
 ---
 
-## 模型路由与指定模型
+## 进阶：用 `Workflow` 做确定性编排
 
-当前工具 schema 只暴露 `task(subagent_type=...)`，不暴露 `category` 或 `load_skills`。不要把旧环境的 category 路由照搬到当前 OpenCode 工具调用里。
+平铺派 `Agent` 适合「一轮就够」。当编排逻辑本身需要循环、条件、扇出扇入时，用 `Workflow`——写一段 JS 脚本，控制流由代码决定而不是由模型即兴发挥。
 
-当前可用 subagent 类型以系统工具说明为准。常见值：
+可用原语：`agent(prompt, opts)`、`parallel(thunks)`、`pipeline(items, ...stages)`、`phase(title)`、`log(msg)`、`workflow(name, args)`，外加 `args` 和 `budget`。
 
-| subagent_type | 用途 |
-|---|---|
-| `general` | 通用研究、复杂问题拆解、外部资料调研、事实核查；通常继承主会话模型 |
-| `explore` | 快速探索代码库、搜索文件和符号、回答内部代码结构问题 |
-| `reasoning_gpt` | GPT 路线高可靠推理和工程判断 |
-| `writer_deepseek` | DeepSeek Pro 路线中文写作与改稿 |
-| `cheap_glm` | GLM 路线低成本初筛和轻量整理 |
-| `private_ds4` | 本地 ds4 路线，隐私敏感优先 |
-| `ollama_kimi` | Ollama Cloud Kimi K2.6，zero-data-retention、低成本 |
-| `ollama_deepseek_pro` | Ollama Cloud DeepSeek V4 Pro，zero-data-retention、高质量但更贵 |
+### 最值得记住的一条：`pipeline` 默认，`parallel` 是屏障
 
-如果未来工具 schema 更新，以运行时 tool schema 为准，不要沿用过期的 `category` / `run_in_background` 写法。
+- **`parallel()` 是屏障**：等所有 thunk 跑完才返回。
+- **`pipeline()` 没有屏障**：每个 item 独立穿过所有 stage，item A 已经跑到 stage 3 时，item B 可能还在 stage 1。
+
+差别是墙钟时间：pipeline 的耗时 = 最慢的**单条链**，parallel 分段的耗时 = 每段最慢者之**和**。5 个 finder 里最慢的比最快的慢 3 倍时，屏障会白白浪费掉快的那些的空闲时间。
+
+**只有当 stage N 真的需要 stage N−1 的全部结果**才用屏障——跨 item 去重、总数为零就整体早退、prompt 里要引用「其他人的发现」。以下都**不是**理由：「我得先 flatten/filter 一下」（放进 pipeline 的一个 stage 里做就行）、「这两步概念上是分开的」（pipeline 本来就建模了分步，分步 ≠ 同步）、「这样代码更好看」。
+
+判断口诀：如果你写出了 `parallel → 一个纯变换 → parallel`，中间那个变换不需要屏障。
+
+### 值得复用的几个质量形态
+
+| 形态 | 做法 | 解决什么 |
+|---|---|---|
+| **对抗式验证** | 每个结论派 N 个独立怀疑者，prompt 要求它们**证伪**，多数证伪就杀掉 | 「看着有道理但其实错」的结论 |
+| **视角分化验证** | N 个验证者各给一个不同镜头（正确性/安全/性能/能否复现），而不是 N 个同质怀疑者 | 冗余检不出的失败模式 |
+| **评审团** | 从不同角度生成 N 个方案，并行打分，从赢家合成并嫁接亚军的好点子 | 解空间宽时，胜过「一个方案反复改」 |
+| **跑到干涸** | 连续 K 轮没有新发现才停，而不是「凑够 N 个」 | 未知规模的发现类任务，固定计数会漏尾巴 |
+| **多模态扫描** | 并行 agent 各用一种检索方式（按容器/按内容/按实体/按时间） | 单一检索角度找不全 |
+| **完备性批评者** | 最后派一个专问「还缺什么——哪个模态没跑、哪条断言没验、哪个来源没读」 | 它找出来的就是下一轮的工作 |
+
+**别静默截断**：如果编排里有 top-N、不重试、抽样这类限制，用 `log()` 把丢掉的部分说出来。静默截断读起来像「全覆盖了」，但其实没有。
+
+### 规模与成本
+
+并发上限是 `min(16, CPU核数-2)`，超出的排队。所以「10 个并行 ≈ 10 倍速」只在上限之内成立。单次 `parallel`/`pipeline` 最多 4096 个 item，单个 workflow 生涯上限 1000 个 agent（防跑飞的兜底，不是设计目标）。
+
+规模要匹配请求：「找找有没有 bug」→ 几个 finder、单票验证；「彻底审计一遍」→ 更大的 finder 池 + 3-5 票对抗验证 + 综合阶段。
+
+### 可恢复
+
+每次调用都会把脚本落盘并返回 `runId` 和路径。改脚本后用 `{scriptPath, resumeFromRunId}` 重跑，**未改动的那段前缀直接命中缓存秒回**，只有第一个改动点及其之后才真跑。调试编排逻辑时这个能省大量重复开销。脚本里**不能用** `Date.now()` / `Math.random()` / 无参 `new Date()`（会破坏 resume），时间戳从 `args` 传进去或等 workflow 返回后再打。
 
 ---
 
 ## 注意事项
 
-- **不要过度并行**：2-3 个精心设计的 subagent 通常优于 5 个松散的。并行越多 token/配额烧得越快（10 个并行 ≈ 10 倍速）。
+- **不要过度并行**：2-3 个精心设计的 subagent 通常优于 5 个松散的。并行越多 token/配额烧得越快——在并发上限（`min(16, 核数-2)`）以内约等于线性倍增，超出后只是排队，不再更快但一样烧钱。
 - **prompt 质量**：subagent 的 prompt 要具体且自包含，否则结果会很浅。
 - **成本意识**：并行消耗更多 token，评估是否值得。
 - **中间结果**：通常不必保存，在主 agent 中整合即可；需要共享则用文件。
+
+---
+
+## 两条实战教训（2026-08-14 现场踩出来的）
+
+### 1. 并行调用之间共享可变状态，会静默串味
+
+同一条消息里发出的多个 `Bash` 调用**共用同一个 shell 会话**，也就共用 cwd。当天一次诊断里，一条命令带了 `cd`，另一条没带——后者继承了前者的 cwd，于是**同一个仓库被当成两个仓库读了两遍**，输出完全一样却看不出异常，据此得出了「这两个仓库是同一个」的错误结论，绕了两轮才发现。
+
+规则：**并行发出的调用必须对可变共享状态零依赖**。具体做法是把状态显式写进每次调用——`git -C <绝对路径>` 而不是 `cd`、绝对路径而不是相对路径、各自独立的输出文件名。这条同样适用于并行 subagent 写同一个 `tmp/` 文件、同一个环境变量、同一个默认分支。
+
+顺带一个同源的坑：zsh 默认开 `MULTIOS`，`cmd 2>&1 >/dev/null | grep` **不会**丢弃 stdout（它是加一个目的地而不是替换），于是「只看 stderr」的意图静默落空。想只要 stderr 就老老实实 `2>file` 再读。
+
+### 2. 「什么都没发现」必须配阳性对照
+
+同一天两次差点栽在这上面：一次是断言「git 跟随 301 重定向时完全静默」，实际测法被上面那个 MULTIOS 坑污染了；一次是扫描仓库历史里的明文密钥，扫出来 0 条。
+
+0 条有两种可能——**真没有**，或者**扫描器根本没读到内容**。二者输出完全一样。所以任何负向结论都要附一个必定命中的对照：密钥扫描顺带 grep 一个已知存在的字符串（命中 41 行 → 证明确实在读 blob），重定向静默性顺带测一个必然报错的仓库（吐出 121 字节 → 证明 stderr 捕获有效）。
+
+这条在并行验证里权重更高：N 个 agent 一起报告「没发现问题」时，你无法区分「干净」和「N 个 agent 都没真的看」。**给验证 agent 的 prompt 里塞一个已知缺陷，看它报不报**，比再加一个 agent 有用得多。
 
 ---
 
@@ -190,9 +239,13 @@ Subagent 的主要价值不是模拟人类团队，也不是把一个普通任�
 
 本工作流原为 OpenCode 编写。遇到旧调用按下表翻译：
 
+upstream（`grapeot/context-infrastructure`）的文档仍按 OpenCode 写，同步时会带回这些名字，照抄会得到不存在的 API。
+
 | 旧（OpenCode） | 新（Claude Code） |
 |---|---|
 | `mcp_task(...)` / `task(...)` | `Agent` 工具（早期叫 `Task`） |
+| `multi_tool_use.parallel` 包多个 `functions.task` | **不存在**；并行 = 同一条消息里发多个 `Agent` 调用 |
+| 手写编排循环 | `Workflow` 工具（`pipeline` / `parallel` / `agent`） |
 | `subagent_type="explore"` | `subagent_type="Explore"`（只读 fan-out 检索） |
 | `subagent_type="librarian"` / `category="deep"`（外部调研） | `subagent_type="general-purpose"`（全工具、能联网） |
 | `subagent_type="oracle"` | `subagent_type="general-purpose"` |

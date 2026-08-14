@@ -138,9 +138,9 @@ External mode 选定后，还需要回答一个更根本的问题：**这件事�
 Agent(
   subagent_type="general-purpose",   # 外部调研，可联网
   description="调研 XX 维度",
-  run_in_background=true,
   prompt="[具体调研维度的 prompt，需自包含]"
 )
+# 并行 = 把上面这样的调用在同一条消息里发出 3-5 个；没有 run_in_background 参数
 ```
 
 每个 sub-agent 的 prompt 中明确：

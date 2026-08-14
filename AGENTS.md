@@ -18,7 +18,7 @@ Before doing anything else:
 
 This harness can delegate work to multiple sub-agents. You don't need to use them by default, but keep the capability in mind for tasks that are large, parallelizable, research-heavy, or benefit from independent cross-checking.
 
-Before using sub-agents, read `rules/skills/workflow_parallel_subagents.md`. The current OpenCode pattern is `multi_tool_use.parallel` wrapping multiple `functions.task` calls in the same assistant message.
+Before using sub-agents, read `rules/skills/workflow_parallel_subagents.md`. On Claude Code, parallelism means **issuing several `Agent` tool calls in the same assistant message** — calling them one at a time is serial. When the orchestration itself needs loops, conditionals, or fan-out/fan-in, use the `Workflow` tool. There is no `multi_tool_use.parallel` and no `functions.task`; those are OpenCode names that upstream docs still carry.
 
 Don't ask permission. Just do it.
 
@@ -43,8 +43,9 @@ Don't ask permission. Just do it.
 
 **调用后台 Agent / 并行 Subagent** → `rules/skills/workflow_parallel_subagents.md`
 - 何时拆分任务、什么时候不要拆、如何并行派出多个 subagent
-- 准备调用多个 `functions.task` 前，先把这个 skill 读一遍再执行
-- 当前并行方式是 `multi_tool_use.parallel`；不要使用旧 `run_in_background` / `background_output` 写法
+- 准备并行派出多个 subagent 前，先把这个 skill 读一遍再执行
+- 并行 = 同一条消息里发多个 `Agent` 调用；编排要循环/条件/扇入扇出用 `Workflow`
+- `Agent` 没有 `run_in_background` 参数；后台任务完成会自动通知，不要轮询
 
 ## Axioms（公理）
 

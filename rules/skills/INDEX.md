@@ -8,9 +8,11 @@
 
 ## Multi-Agent 能力提示
 
-当前 harness 支持通过 `multi_tool_use.parallel` 并行派发多个 `functions.task` subagent。不要默认使用，但遇到大型、可并行、调研重、代码库探索重、需要独立交叉验证的任务时，应先读 [并行 Subagent 工作流](./workflow_parallel_subagents.md)。
+本机 harness 是 **Claude Code**：并行 = 在**同一条消息里发出多个 `Agent` 调用**（逐个调用就是串行）；编排逻辑本身需要循环/条件/扇出扇入时用 `Workflow` 工具。**没有 `multi_tool_use.parallel`，也没有 `functions.task`**——那是 OpenCode 的写法，upstream 文档里仍在用，同步时会带回来，照抄会得到不存在的 API。
 
-快速判断：subagent 适合并行读、独立探索、反方审稿、事实核查和上下文窗口隔离；不适合单点小任务、强顺序依赖任务，以及多个 agent 同时写同一份状态或同一批文件。
+不要默认使用 subagent，但遇到大型、可并行、调研重、代码库探索重、需要独立交叉验证的任务时，先读 [并行 Subagent 工作流](./workflow_parallel_subagents.md)。
+
+快速判断：subagent 适合并行读、独立探索、反方审稿、事实核查和上下文窗口隔离；不适合单点小任务、强顺序依赖任务。「多个 agent 同时写同一批文件」过去是硬禁区，现在可用 `isolation: "worktree"` 给每个 agent 独立 worktree 来化解冲突——但**隐含决策难合并**这一层依然存在，别把它当万能解。
 
 ---
 
@@ -60,7 +62,7 @@
 
 特定任务的完整工作流程。
 
-- [并行 Subagent 工作流](./workflow_parallel_subagents.md) ✅ — 用 `multi_tool_use.parallel` 并行执行多个 `functions.task` subagent
+- [并行 Subagent 工作流](./workflow_parallel_subagents.md) ✅ — 同一条消息里发多个 `Agent` 调用做并行；编排复杂时用 `Workflow`
   - **必读**：初次使用并行 subagent 前，必须先读此 skill
   - **禁止轮询**：后台 subagent 派出后等系统通知即可，完成会自动回传 tool result，不要反复查状态
   - 判断标准：任务可拆分为 ≥2 个子任务，每个 ≥5 tool calls
