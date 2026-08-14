@@ -16,7 +16,7 @@ AI 模型有 knowledge cutoff date，可能错过之后发布的新版本、新�
 ## 做法
 
 1. **不要直接否定**：用户代码中的版本号可能确实存在
-2. **使用 Tavily 搜索验证**：查询是否有新版本发布
+2. **用 `tavily-skill` 搜索验证**（公开 repo，安装见 `docs/SKILL_ECOSYSTEM.md`）：查询是否有新版本发布
 3. **给出准确信息**：包括完整的版本号、发布日期（如有）
 
 ## 案例
@@ -36,7 +36,7 @@ AI 模型有 knowledge cutoff date，可能错过之后发布的新版本、新�
 {产品名} {版本号} official announcement
 ```
 
-使用 Tavily 搜索，`search_depth="advanced"`，`max_results=5`。
+用 `tavily-skill`：`python -m tavily_skill search "..."`（默认 `search_depth=advanced`，已适配 agent）。版本/发布这类强时效查询，用时间窗参数只看近期结果（flag 见该 repo 的 `skills/skill_tavily.md`）。要确认发布细节时，对官方公告 URL 用 `python -m tavily_skill extract <url>` 取全文。
 
 ## 物理锚点校验
 

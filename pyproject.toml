@@ -1,0 +1,32 @@
+[project]
+name = "skynet"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "anthropic>=0.42.0",
+    "beautifulsoup4>=4.14.3",
+    "bedrock-agentcore>=0.1.2",
+    "boto3>=1.40.11",
+    "botocore>=1.40.11",
+    "duckduckgo-search>=7.2.1",
+    "fastapi>=0.136.1",
+    "google-generativeai>=0.8.5",
+    "grpcio==1.70.0",
+    "html5lib>=1.1",
+    "ipython>=9.4.0",
+    "jupyter>=1.1.1",
+    "jupyter-contrib-nbextensions>=0.7.0",
+    "jupyter-nbextensions-configurator>=0.6.4",
+    "notebook>=7.4.5",
+    "openai>=1.59.8",
+    "playwright>=1.41.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.5",
+    "python-dotenv>=1.0.0",
+    "strands-agents>=1.4.0",
+    "strands-agents-tools>=0.2.3",
+    "unittest2>=1.1.0",
+    "uvicorn[standard]>=0.46.0",
+]

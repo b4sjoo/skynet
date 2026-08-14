@@ -1,8 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Secrets & local config
+.env
+
+# Caches & scratch
+.knowledge_cache/
 tmp/
 *.log
-.env
+.DS_Store
+
+# Vendored public skill repos (installed per docs/SKILL_ECOSYSTEM.md — re-clone, don't copy into the starter)
+/adhoc_jobs/tavily-skill/
+
+# Nested project repo (private; managed by its own git in adhoc_jobs/ai_job_copilot/.git)
+/adhoc_jobs/ai_job_copilot/
 .env.*
 !.env.example
-.venv/
-__pycache__/
 .pytest_cache/

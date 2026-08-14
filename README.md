@@ -35,8 +35,7 @@ context-infrastructure/
 ├── .env.example                 # 环境变量模板
 │
 ├── docs/
-│   ├── CRONTAB.md               # 定时任务配置指南（时间线 + 示例 crontab）
-│   └── SKILL_ECOSYSTEM.md       # 可单独安装的 public skill repo 目录
+│   └── CRONTAB.md               # 定时任务配置指南（时间线 + 示例 crontab）
 │
 ├── rules/
 │   ├── SOUL.md                  # AI 的身份和行为基调（模板）

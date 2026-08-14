@@ -20,7 +20,34 @@ Daily     → Crontab Monitor: 健康审计，发现异常则发告警邮件
 
 ---
 
-## 核心任务说明
+## Claude Code 后端实际接线（本机，2026-05-27）
+
+> 本机已把 heartbeat 后端从 OpenCode 切到 Claude Code（`claude --print`）。下面是按真实路径填好、可直接用的 cron。文末原始模板（OpenCode 版、含 Gmail/Kit 依赖）保留作参考。
+
+要点：
+
+- cron 的 PATH 很精简，`claude`（`~/.local/bin`）和 `python3`（`/opt/homebrew/bin`）都不在默认 PATH 里，必须在 crontab 顶部显式补 PATH，否则 `shutil.which("claude")` 找不到。
+- `< /dev/null` 避免 headless `claude` 等待 stdin 的告警。
+- **只自动跑 Observer**（append-only，低风险）。**Reflector 故意不进自动 cron**：它会改写 `rules/` 下的 L3 身份文件并 GC 记忆，属破坏性操作（对应 T07 人工闸门 / V01 责任不可委派），手动触发 + `git diff` 审阅后再保留。
+
+```cron
+# TZ=America/Los_Angeles      # 取消注释以固定时区（macOS 默认用系统时区）
+PATH=/Users/seasonsg/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
+
+# AI Heartbeat Observer（Claude Code 后端）— 每日 8:00 AM
+# 默认权限 acceptEdits（实测足够，最小权限）。想让无人值守时也能用 Bash find 做更全的
+# 文件变动扫描，可加 HEARTBEAT_PERMISSION_MODE=bypassPermissions（限定在 workspace 内）。
+0 8 * * * cd /Users/seasonsg/Dev/portfolio/skynet && HEARTBEAT_BACKEND=claude /opt/homebrew/bin/python3 periodic_jobs/ai_heartbeat/src/v0/observer.py < /dev/null >> /tmp/heartbeat_observer.log 2>&1
+
+# AI Heartbeat Reflector — 故意不自动运行。需要时手动跑并用 git diff 审阅：
+#   cd /Users/seasonsg/Dev/portfolio/skynet && python3 periodic_jobs/ai_heartbeat/src/v0/reflector.py < /dev/null && git diff
+```
+
+验证下一次触发：看 `/tmp/heartbeat_observer.log`，并确认 `contexts/memory/OBSERVATIONS.md` 出现当天的 `Date:` 条目。
+
+---
+
+## 核心任务说明（以下为原始 OpenCode 模板，供参考）
 
 ### Session Sync（每日）
 

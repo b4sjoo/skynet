@@ -49,6 +49,11 @@
 - [GitHub Actions → Koyeb 部署指南](./deployment_github_actions_koyeb.md) — 通过 GitHub Actions 实现测试通过后自动部署到 Koyeb；适用于任何 Docker 化应用
 - [使用 Apple 官方命令行工具发布 App Store Connect](./deployment_app_store_connect_cli.md) ✅ — 用稳定版 Xcode 完成 iOS archive、distribution export、IPA metadata 核验与授权后的上传
 - [分享报告到 Web](./share_report.md) ⚙️ — 将 MD 报告转 HTML 发布到你自己的服务器，返回 URL
+- [Google Docs 操作](./google_docs.md) ⚙️ — CLI 工具：发布 Markdown、创建/搜索/修改/分享文档
+- [增长数据分析](./growth_analytics.md) ⚙️ — 三个 CLI 查询网站流量（GA4）、邮件订阅（Kit）、Twitter 互动（Typefully）
+- [Typefully Metrics CLI](./typefully_metrics.md) ⚙️ — 通过浏览器 session 凭据查询 Twitter impression、engagement、followers 数据
+- [Typefully 发帖 CLI](./typefully_post.md) ⚙️ — 通过 Typefully v2 API 创建草稿、排期发布和直接发布 tweet / thread
+- [Tavily 搜索 / 取原文](../../adhoc_jobs/tavily-skill/skills/skill_tavily.md) 🔧 — 已安装于 `adhoc_jobs/tavily-skill/`（editable 装进 `.venv`）。`python -m tavily_skill search/extract`，agent 默认值（advanced / max 6 / answer off / raw markdown）+ 稳定 JSON。深度调研/时效验证的搜索都走它；私有 `TAVILY_API_KEY` 放本地 `.env`（见 `docs/SKILL_ECOSYSTEM.md`）
 - [Apple Compressor Skill](./compressor.md) ⚙️ — 本机 Apple Compressor CLI 转码；custom preset 路径、源文件写入完成检测、batch 提交与监控
 
 ### Workflow（工作流）
@@ -57,9 +62,8 @@
 
 - [并行 Subagent 工作流](./workflow_parallel_subagents.md) ✅ — 用 `multi_tool_use.parallel` 并行执行多个 `functions.task` subagent
   - **必读**：初次使用并行 subagent 前，必须先读此 skill
-  - **核心标准**：适合并行读、独立探索、交叉验证和上下文隔离；不适合强顺序依赖或共享状态写入
-  - **正确并行**：必须在同一条消息里用 `multi_tool_use.parallel` 包多个 `functions.task`；逐个调用就是串行
-  - 判断标准：任务命中信息面宽、独立读任务、独立判断、高价值不确定性、主线程需保留整合能力中的至少 2 条
+  - **禁止轮询**：后台 subagent 派出后等系统通知即可，完成会自动回传 tool result，不要反复查状态
+  - 判断标准：任务可拆分为 ≥2 个子任务，每个 ≥5 tool calls
   - 核心参数：并行度 ≤5，调研 overlap 30-50%，代码 overlap 0-20%
   - 含 subagent 来源说明、文件优先交接五原则、temperature 警告和 ollama zero-data-retention 路线
 - [Workflow Watchdog](./workflow_watchdog.md) — 派出 workflow/后台 agent 后设 ~30 分钟巡检，区分"真忙 vs 鬼打墙"，卡住就 kill 并用部分结果推进。触发词："watchdog"、"workflow 卡住"、"后台任务巡检"

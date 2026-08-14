@@ -52,3 +52,16 @@
 - Linked the ecosystem index from `README.md`, `setup_guide.md`, and `rules/skills/INDEX.md` so users can discover standalone skill repos without loading every repo into the starter skill index.
 - Kept the model as public repo + private workspace overlay: public repos hold generic CLI contracts and tests; local workspaces hold aliases, paths, endpoints, credentials, and business context.
 - Updated `rules/skills/project_scaffold.md` with the public skill repo installation convention: loose Markdown-based install, one root/router skill per repo, and private overlays outside the public repo.
+
+## 2026-05-27
+
+- Adapted AI Heartbeat to a Claude Code backend: added `periodic_jobs/ai_heartbeat/src/v0/claude_runner.py` (`claude --print` agentic backend) plus a `HEARTBEAT_BACKEND` switch and portable `ROOT_DIR` in observer/reflector. (cfcd102)
+- Added a Claude Code observer cron section to `docs/CRONTAB.md`; observer auto-runs daily, reflector stays manual. Ran the observer once, so `OBSERVATIONS.md` has its first entries. (4be3cf4)
+- Rewrote `rules/skills/workflow_parallel_subagents.md` for Claude Code: Agent tool instead of mcp_task/category/background_output, Claude-only + no-nested-subagent constraints, file-based scratchpad, OpenCode->CC mapping appendix. Updated `AGENTS.md` routing, `bestpractice_multi_agent_analysis.md`, `INDEX.md`. (248d726)
+- Aligned `workflow_deep_research_survey.md` and `bestpractice_temporal_info_verification.md` to Claude Code. (cb50960)
+- Standardized those two skills' web search/extract on the public `tavily-skill` instead of the per-machine MCP tavily tools. (499b83d)
+- Removed orphaned image-generation files that were still present locally despite the 2026-05-25 extraction note (`generate_image.md`, `tools/generate_image.py`, its test). (e218eca)
+- Installed `tavily-skill` under `adhoc_jobs/tavily-skill/` (editable install into `.venv`), exposed one root skill in `rules/skills/INDEX.md`, added `TAVILY_API_KEY` to `.env.example`, and gitignored the vendored repo (re-clone via `docs/SKILL_ECOSYSTEM.md`).
+- Smoke-tested the `tavily-skill` CLI end-to-end: `search` + `extract` both pass; key loaded from `.env`; the `raw_content=markdown` and `answer=off` agent defaults verified live.
+- Researched and designed the **AI Job Copilot** MVP using `workflow_deep_research_survey` (3 parallel Explore agents on data acquisition / resume+ATS / competitors+legal, cross-validated). Saved the standalone design doc at `contexts/survey_sessions/ai_job_copilot_design_20260527.md`; implementation deferred to a later round.
+- Initialized the workspace as a public GitHub repo at `https://github.com/b4sjoo/skynet.git` and pushed `main`. `.env` is not tracked; credential scan was zero-hit before pushing.

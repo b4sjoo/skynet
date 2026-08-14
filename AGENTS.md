@@ -52,19 +52,11 @@ Don't ask permission. Just do it.
 
 ## Sub-agent 模型路由
 
-配置入口：OpenCode 原生 `opencode.json` 的 `agent` 字段，或 `.opencode/agent(s)/*.md` agent 文件。`subagent_type` 必须是已注册 agent 名，不是模型名，也不是旧 `category`。
+当前后端是 Claude Code：subagent 通过 `Agent` 工具派出，`model` 只能选 Claude 系——`opus`（最难的逻辑/架构）、`sonnet`（执行、调研、代码，默认性价比）、`haiku`（轻量/快速），或 `inherit`（随主对话）。
 
-常用路由速查：
-- **代码库探索** → `subagent_type="explore"`
-- **通用并行任务** → `subagent_type="general"`
-- **高可靠推理 / 工程判断** → `subagent_type="reasoning_gpt"`
-- **中文写作 / 改稿** → `subagent_type="writer_deepseek"`
-- **低成本初筛 / 轻量整理** → `subagent_type="cheap_glm"`
-- **本地隐私敏感任务** → `subagent_type="private_ds4"`
-- **Ollama Cloud zero-data-retention 低成本任务** → `subagent_type="ollama_kimi"`
-- **Ollama Cloud zero-data-retention 高质量任务** → `subagent_type="ollama_deepseek_pro"`
+**无法派非 Claude 的 subagent**（Gemini/GPT 等）。需要 Gemini 做创意并行时，走 OpenCode 后端（`tools/opencode_job.py` / `periodic_jobs/ai_heartbeat/src/v0/opencode_client.py`，`provider/model` 格式）或直接调对应 provider，而不是 `Agent` 工具。
 
-创意性工作（brainstorm、文章结构、观点碰撞）默认并行派一个不同路线的 subagent 做反向视角或补充视角。不要使用旧的 `category="artistry"` / `category="deep"` / `category="ultrabrain"` 写法，除非当前 OpenCode 配置已经显式注册了这些同名 agent。
+旧的 `category=artistry/deep/quick/ultrabrain`（映射 Gemini/Sonnet/Haiku/Opus，配 `~/.config/opencode/oh-my-opencode.json`）是 OpenCode 时代的路由，本机已不适用——那个配置文件不存在，且 CC 不做跨 provider 路由。并行调度与 OpenCode→CC 映射见 `rules/skills/workflow_parallel_subagents.md`。
 
 ## Opus 工作模式
 

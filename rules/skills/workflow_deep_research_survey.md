@@ -6,7 +6,7 @@
 - **适用场景**: 需要对某个主题进行深度、全面、可验证的第三方调研
 - **输出位置**: `contexts/survey_sessions/`
 - **创建日期**: 2026-02-19
-- **最后更新**: 2026-06-07
+- **最后更新**: 2026-05-27（搜索/取原文以 `tavily-skill` 为准，见 `docs/SKILL_ECOSYSTEM.md`）
 
 ## 核心原则
 
@@ -50,7 +50,7 @@ External mode 选定后，还需要回答一个更根本的问题：**这件事�
 
 **操作**:
 
-1. 用 Tavily 进行 2-3 次搜索，覆盖：
+1. 用 `tavily-skill` 的 search 做 2-3 次搜索（`python -m tavily_skill search "..."`；安装见 `docs/SKILL_ECOSYSTEM.md`，完整参数见该 repo 的 `skills/skill_tavily.md`），覆盖：
    - 调研对象的基本描述（Tier 1 官方信息）
    - 市场评价和媒体报道（Tier 2 市场叙事）
    - 批评、争议、已知问题（Tier 3-4 信号）
@@ -89,7 +89,7 @@ External mode 选定后，还需要回答一个更根本的问题：**这件事�
 | ... | ... | ... | ... | ... |
 ```
 
-3. 对每个被引集群，外部验证 prior work 实际建立了什么（用 Tavily 搜索原始论文/博客/社区讨论，不依赖本文自己的表述）。特别关注：
+3. 对每个被引集群，外部验证 prior work 实际建立了什么（用 `tavily-skill` 的 search 搜原始论文/博客/社区讨论，关键来源用 `tavily-skill` 的 extract 取全文，不依赖本文自己的表述）。特别关注：
    - prior work 的实际 scope 是否比本文描述的更宽或更窄
    - prior work 是否已经有独立验证或社区复现
    - 本文声称的"first to do X"是否属实
@@ -129,16 +129,18 @@ External mode 选定后，还需要回答一个更根本的问题：**这件事�
 
 **启动 Sub-agent**:
 
-同时启动 3-5 个 sub-agent，每个负责一个维度。使用 `multi_tool_use.parallel` 包多个 `functions.task` 调用，具体调用方式见 `workflow_parallel_subagents.md`。默认用 `general`；低成本初筛可用 `cheap_glm`；高隐私材料用 `private_ds4`；需要 zero-data-retention 云模型时按任务强度选择 `ollama_kimi` 或 `ollama_deepseek_pro`；复杂判断或最终 QA 用 `reasoning_gpt`。
+同时启动 3-5 个 sub-agent，每个负责一个维度。在 Claude Code 里用 `Agent` 工具，按角色选 `subagent_type`：
 
-```json
-{
-  "description": "调研 XX 维度",
-  "subagent_type": "general",
-  "prompt": "[具体调研维度的 prompt]",
-  "task_id": "",
-  "command": ""
-}
+- `general-purpose` — 外部深度调研首选（全工具，可联网、可写中间产物）
+- `Explore` — 读多写少的广撒网检索（含联网），只读、定位为主
+
+```
+Agent(
+  subagent_type="general-purpose",   # 外部调研，可联网
+  description="调研 XX 维度",
+  run_in_background=true,
+  prompt="[具体调研维度的 prompt，需自包含]"
+)
 ```
 
 每个 sub-agent 的 prompt 中明确：
@@ -150,11 +152,10 @@ External mode 选定后，还需要回答一个更根本的问题：**这件事�
 
 主线程把关键结论、来源索引和判断过程整理进 session 目录的 artifact 文件；不必逐字保存原始输出，但不能让关键信息只留在 stdout。
 
-**Tavily 参数偏好**:
-- `max_results=6`（覆盖不足可提至 10）
-- `search_depth="advanced"`
-- `include_answer=false`（直接看结果与原文摘录，不依赖聚合摘要）
-- 按需启用 `include_images` / `include_image_descriptions`
+**搜索 / 取原文：以 `tavily-skill` 为准**（公开 repo，search/extract CLI + 稳定 JSON 输出；安装与定位见 `docs/SKILL_ECOSYSTEM.md`，完整参数表见该 repo 的 `skills/skill_tavily.md`）:
+- 搜索：`python -m tavily_skill search "query"`。它的 agent 默认值正合调研需求——`search_depth=advanced`、`max_results=6`、`answer=off`（不信任 Tavily 的聚合 answer，自己从原文综合）、`raw_content=markdown`。默认把完整结果写到 `tmp/tavily/*.json` 并在 stdout 返回带 `output_path` 的状态；要一轮内直接消费就加 `--stdout`。
+- 取原文：对要引用的关键 URL 用 `python -m tavily_skill extract <url>` 拉全文 markdown，而不是只留 search 的 snippet。
+- **打 Tier / 限时效**：按 Tier 3-4 锁域名（`github.com` / `reddit.com` / `news.ycombinator.com` / `stackoverflow.com`）、排除厂商站、限定时间窗（呼应 V04），对应 flag 见 `skills/skill_tavily.md` 的参数表——不要凭记忆写 flag 名。
 
 ### Phase 3: 整合与交叉验证
 
@@ -233,9 +234,9 @@ Brainstorm 不是标题润色，也不是多 agent 泛泛复述。它必须转�
 
 ## Subagent 原始产出
 
-| Agent | Session ID | URLs | 状态 |
-|-------|-----------|------|------|
-| Agent 1 | `ses_xxx` | 50+ | completed |
+| Agent | 维度 | 来源数 | agentId（选填，可用 SendMessage 续） | 状态 |
+|-------|------|--------|----------------------------------|------|
+| Agent 1 | 失败与边界（Tier 3-4） | 50+ | `ac3…` | completed |
 ```
 
 ## URL 留存规范
@@ -279,7 +280,7 @@ Brainstorm 不是标题润色，也不是多 agent 泛泛复述。它必须转�
 | 维度划分太干净没有 overlap | 设计维度时故意让边缘模糊 |
 | Sub-agent 返回信息太浅 | prompt 中强调"深度"、"具体"、"原文" |
 | 中间文件堆积 | 集中到 `tmp/<session_slug>/`，只保留关键索引和判断 |
-| 用错 subagent 类型 | `subagent_type` 必须是当前已注册 agent 名；外部调研默认 `general`，代码库探索用 `explore`，隐私敏感用 `private_ds4` 或 Ollama Cloud 路线 |
+| 用错 subagent 类型 | 外部调研用 `general-purpose`（要写产物/深挖）或 `Explore`（只读广撒网，含联网）；别再用已不存在的 `librarian`/`deep` |
 | 调研结果变成 vendor marketing 汇总 | Phase 1 提取 claim，Phase 2 按证据功能分配维度，Phase 3 核查验证状态 |
 
 写作阶段的 reader takeaway、article warrant、source contract 与成稿验收要求见 [writing-skill](https://github.com/grapeot/writing-skill/blob/master/skills/workflow_external_writing.md)。
