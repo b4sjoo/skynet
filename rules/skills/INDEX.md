@@ -70,6 +70,7 @@
   - 含 subagent 来源说明、文件优先交接五原则、temperature 警告和 ollama zero-data-retention 路线
 - [Workflow Watchdog](./workflow_watchdog.md) — 派出 workflow/后台 agent 后设 ~30 分钟巡检，区分"真忙 vs 鬼打墙"，卡住就 kill 并用部分结果推进。触发词："watchdog"、"workflow 卡住"、"后台任务巡检"
 - [深度调研工作流](./workflow_deep_research_survey.md) ✅ — 多 Agent 并行 + 交叉验证（Phase 1-3 信息采集）
+- [市场机会扫描工作流](./workflow_market_opportunity_scan.md) ✅ — 四阶段漏斗筛商业机会：规则定标 → 多模态广撒网 → 量化（AI Overview 探针/长尾扩展）→ 对抗性尽调（活体对照+否决线前置）；含 2026 免费站+广告的行业结构判断、30 秒预筛三问、组合经济学。触发词："机会扫描"、"垂直领域调研"、"go/no-go 尽调"
 - [公开 Consensus Net Income 审计工作流](./workflow_public_consensus_net_income_audit.md) — 用 MarketScreener 等公开网页审计一组股票的 FY/CY consensus net income，区分 direct/derived、current/baseline/revision，并要求逐链接 QA。触发词："consensus net income"、"MarketScreener 审计"、"FY2026E 净利润共识"
 - [科研论文调研与写作工作流](./workflow_research_paper_survey_writing.md) — 把科研论文转化为面向技术从业者的分析文章。核心：按读者重要性排序（不按论文章节）、三层分离（paper claim / 外部验证 / 我们的判断）、强制生态位分析（bottleneck / 替代路径 / stack 层级 / 相邻影响）。触发词："分析这篇论文"、"写论文解读"、"paper analysis"
 - [外部写作工作流](./workflow_external_writing.md) → 已迁移到 [grapeot/writing-skill](https://github.com/grapeot/writing-skill/blob/master/skills/workflow_external_writing.md) — external-facing 分析文章操作主干；双生成单审查、分离冷读验收、终端冷读一票放行

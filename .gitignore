@@ -21,6 +21,8 @@ tmp/
 # The directory itself stays in the repo via the un-ignored .gitkeep below.
 /adhoc_jobs/*
 !/adhoc_jobs/.gitkeep
+/contexts/survey_sessions/*
+!/contexts/survey_sessions/
 .env.*
 !.env.example
 .pytest_cache/
