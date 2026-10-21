@@ -21,6 +21,8 @@ tmp/
 # The directory itself stays in the repo via the un-ignored .gitkeep below.
 /adhoc_jobs/*
 !/adhoc_jobs/.gitkeep
+# Exception: tavily-skill is a general-purpose tool, tracked as a submodule (see .gitmodules).
+!/adhoc_jobs/tavily-skill
 /contexts/survey_sessions/*
 !/contexts/survey_sessions/
 .env.*

@@ -1,0 +1,3 @@
+[submodule "adhoc_jobs/tavily-skill"]
+	path = adhoc_jobs/tavily-skill
+	url = https://github.com/grapeot/tavily-skill
